@@ -1,0 +1,14 @@
+{
+  "name": "todo-docker",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
+}
