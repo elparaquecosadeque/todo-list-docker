@@ -1,7 +1,0 @@
-tunnel: 69e86930-5883-4af3-b358-f5722f33be39
-credentials-file: C:\Users\USUARIO\.cloudflared\69e86930-5883-4af3-b358-f5722f33be39.json
-
-ingress:
-  - hostname: todo-list-docker.gerardoleon.dev
-    service: http://localhost:3000
-  - service: http_status:404

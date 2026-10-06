@@ -1,7 +1,7 @@
 # todo-docker (POC)
 
 To-do list mínima, persistida en Postgres, corriendo en un contenedor Docker
-y expuesta por cloudflared a `todo-list-docker.gerardoleon.dev`.
+y expuesta por cloudflared (desde jenkins-local) a `todo-list-docker.gerardoleon.dev`.
 
 ## 1. Docker Desktop
 
@@ -55,18 +55,6 @@ resuelta al estilo Docker (sidecar).
 
 ## 6. Exponer con cloudflared
 
-```bash
-cloudflared tunnel login                          # abre el navegador, autentica con tu cuenta de Cloudflare
-cloudflared tunnel create todo-docker-poc         # imprime un TUNNEL_ID
-cloudflared tunnel route dns todo-docker-poc todo-list-docker.gerardoleon.dev
-```
-
-Edita `cloudflared/config.yml` y reemplaza `<TUNNEL_ID>` (dos lugares) con el
-ID que te dio `tunnel create`.
-
-```bash
-cloudflared tunnel --config cloudflared/config.yml run todo-docker-poc
-```
-
-Con la app corriendo (paso 4 o 5) y el túnel arriba, abre
-`https://todo-list-docker.gerardoleon.dev`.
+En el servidor lo publica el contenedor `cloudflared` de
+[jenkins-local](https://github.com/elparaquecosadeque/jenkins-local) (ver su
+`cloudflared/config.yml`) en `https://todo-list-docker.gerardoleon.dev`.
