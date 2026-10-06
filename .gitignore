@@ -1,3 +1,4 @@
 node_modules
 .env
 blog-notes.md
+sql/.setup-host-db.rendered.sql

@@ -1,5 +1,6 @@
 // CI/CD for todo-list on the self-hosted Jenkins (see the jenkins-local repo).
 // Every new commit on master: images tagged <build>-<sha> → release → deploy (waits for healthchecks).
+// The database lives in worktime's Postgres; deploy/bootstrap-db.sh creates role/db/schema idempotently.
 //
 // A release is the compose file of one tag, kept in $JENKINS_HOME/deploy-state/todo-list/<tag>/.
 // Deploys and rollbacks run from the target tag's release, so the old compose config comes back with the old images.
@@ -61,6 +62,7 @@ pipeline {
       steps {
         script { env.DEPLOY_STARTED = 'true' }
         withCredentials([string(credentialsId: 'todo-list-db-password', variable: 'DB_PASSWORD')]) {
+          sh 'bash deploy/bootstrap-db.sh'
           sh 'TODO_TAG="$TAG" docker compose -f "$RELEASES/$TAG/docker-compose.yml" up -d --no-build --wait --wait-timeout 120'
         }
       }
@@ -74,7 +76,7 @@ pipeline {
         ls -1t "$RELEASES" | grep -v last-good | tail -n +"$((KEEP_RELEASES + 1))" | grep -vx "$TAG" \
           | xargs -r -I{} rm -rf "$RELEASES/{}"
         # Keep the images of the last N builds for instant rollback; never the one just deployed.
-        for repo in todo-list-app todo-list-db todo-list-cleaner; do
+        for repo in todo-list-app todo-list-cleaner; do
           docker images "$repo" --format '{{.Tag}}' | grep -E '^[0-9]+-' | sort -t- -k1,1nr \
             | tail -n +"$((KEEP_RELEASES + 1))" | grep -vx "$TAG" | xargs -r -I{} docker rmi "$repo:{}" >/dev/null || true
         done

@@ -38,17 +38,18 @@ docker run --rm -p 3000:3000 --env-file .env todo-app
 
 Abre `http://localhost:3000` y prueba agregar/marcar/borrar tareas.
 
-## 5. Alternativa: docker-compose (Postgres propio + cron sidecar)
+## 5. Alternativa: docker-compose (Postgres de worktime + cron sidecar)
 
-Usa las variables `DB_USER` / `DB_PASSWORD` / `DB_NAME` del mismo `.env`
-(no necesita el Postgres nativo del host):
+Usa el Postgres de worktime (red `worktime_default`), así que worktime tiene que
+estar corriendo. `DB_PASSWORD` sale del `.env`:
 
 ```bash
+DB_PASSWORD=... ./deploy/bootstrap-db.sh   # rol, DB y tabla; idempotente
 docker compose up --build
 ```
 
-`db` trae su propio volumen y corre `sql/init.sql` al crearse. `cleaner` es
-un contenedor aparte con `crond` que limpia la tabla cada 2 horas — la misma
+En el servidor lo despliega Jenkins (`Jenkinsfile`). `cleaner` es un
+contenedor aparte con `crond` que limpia la tabla cada 2 horas — la misma
 tarea que en la versión suelta hace `setInterval` dentro de la app, pero
 resuelta al estilo Docker (sidecar).
 

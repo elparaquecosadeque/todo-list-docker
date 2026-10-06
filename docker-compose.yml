@@ -1,5 +1,8 @@
 # docker compose up --build   →   http://localhost:3000
 # Jenkins (jenkins-local) deploys this same file with TODO_TAG=<build>-<sha> and DB_PASSWORD from its credentials.
+#
+# No Postgres of its own: it uses worktime's (service "postgres" on the worktime_default network), so worktime
+# must be running. Role, database and schema are created by deploy/bootstrap-db.sh.
 name: todo-list
 
 services:
@@ -10,29 +13,10 @@ services:
     ports:
       - "${TODO_PORT:-3000}:3000"
     environment:
-      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/${DB_NAME:-tododb}
-    depends_on:
-      db: { condition: service_healthy }
+      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@postgres:5432/${DB_NAME:-tododb}
     healthcheck:
       # GET / queries the todos table, so healthy means app + DB + schema all work.
       test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:3000/"]
-      interval: 5s
-      retries: 10
-
-  db:
-    build: ./sql
-    image: todo-list-db:${TODO_TAG:-latest}
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-todoapp}
-      # Only applied when the volume is first created; changing it later needs ALTER USER.
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME:-tododb}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      # TCP, not the socket: during initdb Postgres only listens on the socket, so this waits for init.sql.
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       retries: 10
 
@@ -41,9 +25,9 @@ services:
     image: todo-list-cleaner:${TODO_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/${DB_NAME:-tododb}
-    depends_on:
-      db: { condition: service_healthy }
+      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@postgres:5432/${DB_NAME:-tododb}
 
-volumes:
-  pgdata:
+networks:
+  default:
+    name: worktime_default
+    external: true
