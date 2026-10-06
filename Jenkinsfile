@@ -1,6 +1,6 @@
 // CI/CD for todo-list on the self-hosted Jenkins (see the jenkins-local repo).
 // Every new commit on master: images tagged <build>-<sha> → release → deploy (waits for healthchecks).
-// The database lives in worktime's Postgres; deploy/bootstrap-db.sh creates role/db/schema idempotently.
+// The database lives in jenkins-local's shared Postgres: ensure-db (role + db) and sql/init.sql are idempotent.
 //
 // A release is the compose file of one tag, kept in $JENKINS_HOME/deploy-state/todo-list/<tag>/.
 // Deploys and rollbacks run from the target tag's release, so the old compose config comes back with the old images.
@@ -62,7 +62,10 @@ pipeline {
       steps {
         script { env.DEPLOY_STARTED = 'true' }
         withCredentials([string(credentialsId: 'todo-list-db-password', variable: 'DB_PASSWORD')]) {
-          sh 'bash deploy/bootstrap-db.sh'
+          sh '''
+            ensure-db todoapp tododb
+            docker exec -i shared-postgres psql -U todoapp -d tododb -v ON_ERROR_STOP=1 -q < sql/init.sql
+          '''
           sh 'TODO_TAG="$TAG" docker compose -f "$RELEASES/$TAG/docker-compose.yml" up -d --no-build --wait --wait-timeout 120'
         }
       }

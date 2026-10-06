@@ -38,20 +38,15 @@ docker run --rm -p 3000:3000 --env-file .env todo-app
 
 Abre `http://localhost:3000` y prueba agregar/marcar/borrar tareas.
 
-## 5. Alternativa: docker-compose (Postgres de worktime + cron sidecar)
+## 5. En el servidor (jenkins-local)
 
-Usa el Postgres de worktime (red `worktime_default`), así que worktime tiene que
-estar corriendo. `DB_PASSWORD` sale del `.env`:
+Lo despliega Jenkins con el `Jenkinsfile`. Usa el Postgres compartido de
+jenkins-local (`shared-postgres`, red `shared-db`), donde tiene su propio rol
+y su propia base; el pipeline los crea con `ensure-db` antes de cada deploy.
 
-```bash
-DB_PASSWORD=... ./deploy/bootstrap-db.sh   # rol, DB y tabla; idempotente
-docker compose up --build
-```
-
-En el servidor lo despliega Jenkins (`Jenkinsfile`). `cleaner` es un
-contenedor aparte con `crond` que limpia la tabla cada 2 horas — la misma
-tarea que en la versión suelta hace `setInterval` dentro de la app, pero
-resuelta al estilo Docker (sidecar).
+`cleaner` es un contenedor aparte con `crond` que limpia la tabla cada 2
+horas — la misma tarea que en la versión suelta hace `setInterval` dentro de
+la app, pero resuelta al estilo Docker (sidecar).
 
 ## 6. Exponer con cloudflared
 

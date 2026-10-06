@@ -1,8 +1,8 @@
 # docker compose up --build   →   http://localhost:3000
 # Jenkins (jenkins-local) deploys this same file with TODO_TAG=<build>-<sha> and DB_PASSWORD from its credentials.
 #
-# No Postgres of its own: it uses worktime's (service "postgres" on the worktime_default network), so worktime
-# must be running. Role, database and schema are created by deploy/bootstrap-db.sh.
+# No Postgres of its own: it uses jenkins-local's shared one (host "shared-postgres" on the shared-db network).
+# The Jenkinsfile creates role, database and schema before each deploy.
 name: todo-list
 
 services:
@@ -11,9 +11,9 @@ services:
     image: todo-list-app:${TODO_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "${TODO_PORT:-3000}:3000"
+      - "127.0.0.1:${TODO_PORT:-3000}:3000" # host-only; the public side is jenkins-local's cloudflared
     environment:
-      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@postgres:5432/${DB_NAME:-tododb}
+      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@shared-postgres:5432/${DB_NAME:-tododb}
     healthcheck:
       # GET / queries the todos table, so healthy means app + DB + schema all work.
       test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:3000/"]
@@ -25,9 +25,9 @@ services:
     image: todo-list-cleaner:${TODO_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@postgres:5432/${DB_NAME:-tododb}
+      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@shared-postgres:5432/${DB_NAME:-tododb}
 
 networks:
   default:
-    name: worktime_default
+    name: shared-db
     external: true
