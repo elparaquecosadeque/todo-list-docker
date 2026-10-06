@@ -1,29 +1,49 @@
+# docker compose up --build   →   http://localhost:3000
+# Jenkins (jenkins-local) deploys this same file with TODO_TAG=<build>-<sha> and DB_PASSWORD from its credentials.
+name: todo-list
+
 services:
   app:
     build: .
+    image: todo-list-app:${TODO_TAG:-latest}
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${TODO_PORT:-3000}:3000"
     environment:
-      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/${DB_NAME:-tododb}
     depends_on:
-      - db
+      db: { condition: service_healthy }
+    healthcheck:
+      # GET / queries the todos table, so healthy means app + DB + schema all work.
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:3000/"]
+      interval: 5s
+      retries: 10
 
   db:
-    image: postgres:16-alpine
+    build: ./sql
+    image: todo-list-db:${TODO_TAG:-latest}
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-todoapp}
+      # Only applied when the volume is first created; changing it later needs ALTER USER.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-tododb}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # TCP, not the socket: during initdb Postgres only listens on the socket, so this waits for init.sql.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
 
   cleaner:
     build: ./cron
+    image: todo-list-cleaner:${TODO_TAG:-latest}
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      DATABASE_URL: postgres://${DB_USER:-todoapp}:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/${DB_NAME:-tododb}
     depends_on:
-      - db
+      db: { condition: service_healthy }
 
 volumes:
   pgdata:
